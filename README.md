@@ -1,4 +1,3 @@
-#easynode_blockchain
 
 ### 概述
 本服务转发用户端发起请求到区块链相应的节点并在此期间提供最优节点，主要应用在提交交易、余额查阅，查询矿工费等场景
@@ -17,3 +16,85 @@
 ### 限制
 
  - 目前仅支持 ether、 tron 等2种公链
+ 
+ 
+### Prerequisites 
+
+- go version>=1.18
+
+### Building the source
+
+(以linux系统为例)
+- mkdir easynode & cd easynode
+- git https://github.com/uduncloud/easynode_chain.git
+- cd easynode_chain
+- CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o easynode_chain app.go
+  (mac下编译linux程序为例，其他交叉编译的命令请自行搜索)
+
+- ./easynode_chain -config ./config.json
+
+### config.json 解释
+
+``````
+{
+  "RootPath": "/api/chain", //api根目录
+  "Port": 9002, //端口
+  "BlockChain": [200,205], //支持的公链代码
+  "Cluster": {//区块链节点集群
+    "200": [{ //ether 节点配置
+      "NodeUrl": "https://eth-mainnet.g.alchemy.com/v2", //节点地址
+      "NodeToken": "RzxBjjh_c4y0LVHZ7GNm8zoXEZR3HYop" //节点需要token
+    }],
+    "205": [{ //tron 节点配置
+      "NodeUrl": "https://api.trongrid.io",//节点地址
+      "NodeToken": "244f918d-56b5-4a16-9665-9637598b1223"//节点需要token
+    }]
+  }
+}
+
+``````
+
+### usages
+
+``````
+//发送交易接口
+curl -X POST \
+  http://127.0.0.1:9002/api/chain/200/sendRawTransaction \
+  -H 'Content-Type: application/json' \
+  -H 'Postman-Token: 84336133-4ab2-47c4-b600-7b56bfdd79d9' \
+  -H 'cache-control: no-cache' \
+  -d '{
+	"signed_tx":"0xe5cB067E90D5Cd1F8052B83562Ae670bA4A211a8"
+}'
+
+//查询地址余额接口
+curl -X POST \
+  http://127.0.0.1:9002/api/chain/200/balance \
+  -H 'Content-Type: application/json' \
+  -H 'Postman-Token: 3eac86c7-c5aa-4dd3-93d3-a3b23678512d' \
+  -H 'cache-control: no-cache' \
+  -d '{
+	"address":"0xe5cB067E90D5Cd1F8052B83562Ae670bA4A211a8",
+	"tag":"latest"
+}'
+
+//区块链通用接口，基于区块链标准，以http-rpc协议实现
+curl -X POST \
+  http://127.0.0.1:9002/api/chain/200/send \
+  -H 'Content-Type: application/json' \
+  -H 'Postman-Token: 3d6a170b-bd88-42b5-83d1-d3e5bec7babf' \
+  -H 'cache-control: no-cache' \
+  -d '{
+    "id": 1,
+    "jsonrpc": "2.0",
+    "params": [
+        "0xe5cB067E90D5Cd1F8052B83562Ae670bA4A211a8",
+        "latest"
+    ],
+    "method": "eth_getBalance"
+}'
+
+
+``````
+
+
