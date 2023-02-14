@@ -11,12 +11,5 @@
       "NodeUrl": "https://api.trongrid.io",
       "NodeToken": "244f918d-56b5-4a16-9665-9637598b1223"
     }]
-  },
-  "TaskDb": {
-    "Addr": "192.168.2.11",
-    "Port": 3306,
-    "User": "root",
-    "Password": "123456789",
-    "DbName": "easy_node"
   }
 }
