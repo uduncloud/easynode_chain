@@ -114,7 +114,7 @@ func (h *Handler) SendRawTx(ctx *gin.Context) {
 		return
 	}
 
-	address := gjson.ParseBytes(b).Get("address").String()
+	signedTx := gjson.ParseBytes(b).Get("signed_tx").String()
 
 	req := `
 {
@@ -126,7 +126,7 @@ func (h *Handler) SendRawTx(ctx *gin.Context) {
      "method": "eth_sendRawTransaction"
 }
 `
-	req = fmt.Sprintf(req, address)
+	req = fmt.Sprintf(req, signedTx)
 
 	res, err := h.SendReq(blockChainCode, req)
 	if err != nil {
