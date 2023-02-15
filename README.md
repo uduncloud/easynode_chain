@@ -43,11 +43,11 @@
   "Cluster": {//区块链节点集群
     "200": [{ //ether 节点配置
       "NodeUrl": "https://eth-mainnet.g.alchemy.com/v2", //节点地址
-      "NodeToken": "RzxBjjh_c4y0LVHZ7GNm8zoXEZR3HYop" //节点需要token
+      "NodeToken": "************************" //节点需要token
     }],
     "205": [{ //tron 节点配置
       "NodeUrl": "https://api.trongrid.io",//节点地址
-      "NodeToken": "244f918d-56b5-4a16-9665-9637598b1223"//节点需要token
+      "NodeToken": "********************"//节点需要token
     }]
   }
 }
