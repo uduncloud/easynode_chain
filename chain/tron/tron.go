@@ -2,7 +2,6 @@ package tron
 
 import (
 	"errors"
-	"fmt"
 	"github.com/tidwall/gjson"
 	"io/ioutil"
 	"log"
@@ -18,22 +17,7 @@ func Eth_WriteMsgToChain(host string, token string, query string) (string, error
 		log.Printf("Eth_GetBlockByHash | duration=%v", time.Now().Sub(start))
 	}()
 
-	//url := "https://eth-mainnet.g.alchemy.com/v2/demo"
-
-	host = fmt.Sprintf("%v/%v", host, "jsonrpc")
-	//	query := `
-	//{
-	//    "id": 1,
-	//    "jsonrpc": "2.0",
-	//    "method": "eth_getBlockByHash",
-	//    "params": [
-	//        "%v",
-	//        true
-	//    ]
-	//}
-	//`
-	//
-	//	query = fmt.Sprintf(query, blockHash)
+	//host = fmt.Sprintf("%v/%v", host, "jsonrpc")
 	payload := strings.NewReader(query)
 
 	req, err := http.NewRequest("POST", host, payload)

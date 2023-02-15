@@ -8,7 +8,7 @@
       "NodeToken": "*********************"
     }],
     "205": [{
-      "NodeUrl": "https://api.trongrid.io",
+      "NodeUrl": "https://api.trongrid.io/jsonrpc",
       "NodeToken": "*********************"
     }]
   }

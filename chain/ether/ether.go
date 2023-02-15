@@ -18,22 +18,9 @@ func Eth_WriteMsgToChain(host string, token string, query string) (string, error
 		log.Printf("Eth_GetBlockByHash | duration=%v", time.Now().Sub(start))
 	}()
 
-	//url := "https://eth-mainnet.g.alchemy.com/v2/demo"
-
-	host = fmt.Sprintf("%v/%v", host, token)
-	//	query := `
-	//{
-	//    "id": 1,
-	//    "jsonrpc": "2.0",
-	//    "method": "eth_getBlockByHash",
-	//    "params": [
-	//        "%v",
-	//        true
-	//    ]
-	//}
-	//`
-	//
-	//	query = fmt.Sprintf(query, blockHash)
+	if len(token) > 1 {
+		host = fmt.Sprintf("%v/%v", host, token)
+	}
 	payload := strings.NewReader(query)
 
 	req, err := http.NewRequest("POST", host, payload)
