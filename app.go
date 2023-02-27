@@ -33,8 +33,11 @@ func main() {
 	srv := service.NewHandler(cfg.Cluster, xLog)
 	root.POST("/:chain/send", srv.HandlerReq)
 
-	root.POST("/:chain/balance", srv.GetBalance)
-	root.POST("/:chain/sendRawTransaction", srv.SendRawTx)
+	root.POST("/:chain/account/balance", srv.GetBalance)
+	root.POST("/:chain/account/tokenBalance", srv.GetTokenBalance)
+	root.POST("/:chain/account/nonce", srv.GetNonce)
+	root.POST("/:chain/block/latest", srv.GetLatestBlock)
+	root.POST("/:chain/tx/sendRawTransaction", srv.SendRawTx)
 
 	err := e.Run(fmt.Sprintf(":%v", cfg.Port))
 	if err != nil {

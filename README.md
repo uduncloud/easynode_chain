@@ -59,7 +59,7 @@
 ``````
 //发送交易接口
 curl -X POST \
-  http://127.0.0.1:9002/api/chain/200/sendRawTransaction \
+  http://127.0.0.1:9002/api/chain/200/tx/sendRawTransaction \
   -H 'Content-Type: application/json' \
   -H 'Postman-Token: 84336133-4ab2-47c4-b600-7b56bfdd79d9' \
   -H 'cache-control: no-cache' \
@@ -69,7 +69,7 @@ curl -X POST \
 
 //查询地址余额接口
 curl -X POST \
-  http://127.0.0.1:9002/api/chain/200/balance \
+  http://127.0.0.1:9002/api/chain/200/account/balance \
   -H 'Content-Type: application/json' \
   -H 'Postman-Token: 3eac86c7-c5aa-4dd3-93d3-a3b23678512d' \
   -H 'cache-control: no-cache' \
@@ -77,6 +77,24 @@ curl -X POST \
 	"address":"0xe5cB067E90D5Cd1F8052B83562Ae670bA4A211a8",
 	"tag":"latest"
 }'
+
+//Ether 链的 nonce值
+curl -X POST \
+  http://127.0.0.1:9002/api/chain/200/account/nonce \
+  -H 'Content-Type: application/json' \
+  -H 'Postman-Token: 8fe90095-369c-453c-8d59-6fa18b0a83a0' \
+  -H 'cache-control: no-cache' \
+  -d '{
+	"address":"0xe5cB067E90D5Cd1F8052B83562Ae670bA4A211a8",
+	"tag":"latest"
+}'
+
+// 区块链的最新区块高度
+curl -X POST \
+  http://127.0.0.1:9002/api/chain/205/block/latest \
+  -H 'Content-Type: application/json' \
+  -H 'Postman-Token: 8d1d5eab-482a-4f0b-b31e-98ab59daf924' \
+  -H 'cache-control: no-cache'
 
 //区块链通用接口，基于区块链标准，以http-rpc协议实现
 curl -X POST \

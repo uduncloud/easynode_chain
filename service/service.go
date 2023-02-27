@@ -100,6 +100,115 @@ func (h *Handler) GetBalance(ctx *gin.Context) {
 
 }
 
+// GetTokenBalance todo ERC20协议代币余额，后期补充
+func (h *Handler) GetTokenBalance(ctx *gin.Context) {
+	code := ctx.Param("chain")
+
+	blockChainCode, err := strconv.ParseInt(code, 0, 64)
+	if err != nil {
+		h.Error(ctx, ctx.Request.RequestURI, err.Error())
+		return
+	}
+	b, err := ioutil.ReadAll(ctx.Request.Body)
+	if err != nil {
+		h.Error(ctx, ctx.Request.RequestURI, err.Error())
+		return
+	}
+
+	addr := gjson.ParseBytes(b).Get("address").String()
+	codeHash := gjson.ParseBytes(b).Get("codeHash").String()
+	tag := gjson.ParseBytes(b).Get("tag").String()
+
+	req := `
+ {
+     "id": 1,
+     "jsonrpc": "2.0",
+     "params": [
+          "%v",
+          "%v"
+     ],
+     "method": "eth_getBalance"
+}
+`
+	req = fmt.Sprintf(req, addr, tag, codeHash)
+
+	res, err := h.SendReq(blockChainCode, req)
+	if err != nil {
+		h.Error(ctx, ctx.Request.RequestURI, err.Error())
+		return
+	}
+
+	h.Success(ctx, res, ctx.Request.RequestURI)
+
+}
+
+// GetNonce todo 仅适用于 ether,tron 暂不支持
+func (h *Handler) GetNonce(ctx *gin.Context) {
+	code := ctx.Param("chain")
+
+	blockChainCode, err := strconv.ParseInt(code, 0, 64)
+	if err != nil {
+		h.Error(ctx, ctx.Request.RequestURI, err.Error())
+		return
+	}
+	b, err := ioutil.ReadAll(ctx.Request.Body)
+	if err != nil {
+		h.Error(ctx, ctx.Request.RequestURI, err.Error())
+		return
+	}
+
+	addr := gjson.ParseBytes(b).Get("address").String()
+	tag := gjson.ParseBytes(b).Get("tag").String() //pending,latest
+
+	req := `
+ {
+     "id": 1,
+     "jsonrpc": "2.0",
+     "params": [
+          "%v",
+          "%v"
+     ],
+     "method": "eth_getTransactionCount"
+}
+`
+	req = fmt.Sprintf(req, addr, tag)
+
+	res, err := h.SendReq(blockChainCode, req)
+	if err != nil {
+		h.Error(ctx, ctx.Request.RequestURI, err.Error())
+		return
+	}
+
+	h.Success(ctx, res, ctx.Request.RequestURI)
+
+}
+
+func (h *Handler) GetLatestBlock(ctx *gin.Context) {
+	code := ctx.Param("chain")
+
+	blockChainCode, err := strconv.ParseInt(code, 0, 64)
+	if err != nil {
+		h.Error(ctx, ctx.Request.RequestURI, err.Error())
+		return
+	}
+
+	req := `
+ {
+     "id": 1,
+     "jsonrpc": "2.0",
+     "method": "eth_blockNumber"
+}
+`
+	res, err := h.SendReq(blockChainCode, req)
+	if err != nil {
+		h.Error(ctx, ctx.Request.RequestURI, err.Error())
+		return
+	}
+
+	h.Success(ctx, res, ctx.Request.RequestURI)
+
+}
+
 func (h *Handler) SendRawTx(ctx *gin.Context) {
 	code := ctx.Param("chain")
 
