@@ -3,7 +3,11 @@ package ether
 import (
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/tidwall/gjson"
+	"github.com/uduncloud/easynode_chain/chain/token"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -50,4 +54,51 @@ func Eth_WriteMsgToChain(host string, token string, query string) (string, error
 	}
 
 	return string(body), nil
+}
+
+func Eth_GetToken(host string, key string, contractAddress string, userAddress string) (map[string]interface{}, error) {
+	if len(key) > 1 {
+		host = fmt.Sprintf("%v/%v", host, key)
+	}
+	client, err := ethclient.Dial(host)
+	if err != nil {
+		return nil, err
+	}
+
+	// Golem (GNT) Address
+	tokenAddress := common.HexToAddress(contractAddress)
+	instance, err := token.NewToken(tokenAddress, client)
+	if err != nil {
+		return nil, err
+	}
+
+	address := common.HexToAddress(userAddress)
+	bal, err := instance.BalanceOf(&bind.CallOpts{}, address)
+	if err != nil {
+		return nil, err
+	}
+	mp := make(map[string]interface{}, 2)
+	mp["balance"] = bal.String()
+
+	name, err := instance.Name(&bind.CallOpts{})
+	if err != nil {
+		log.Println("err=", err)
+	} else {
+		mp["name"] = name
+	}
+
+	symbol, err := instance.Symbol(&bind.CallOpts{})
+	if err != nil {
+		log.Println("err=", err)
+	} else {
+		mp["symbol"] = symbol
+	}
+
+	decimals, err := instance.Decimals(&bind.CallOpts{})
+	if err != nil {
+		log.Println("err=", err)
+	} else {
+		mp["decimals"] = decimals
+	}
+	return mp, nil
 }

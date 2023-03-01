@@ -44,6 +44,22 @@ func (h *Handler) BalanceCluster(blockChain int64) *config.NodeCluster {
 		return nil
 	}
 }
+func (h *Handler) SendReqForRPC(blockChain int64, contractAddress string, userAddress string, abi string) (map[string]interface{}, error) {
+	cluster := h.BalanceCluster(blockChain)
+	if cluster == nil {
+		//不存在节点
+		return nil, errors.New("blockchain node has not found")
+	}
+
+	if blockChain == 200 {
+		return ether.Eth_GetToken(cluster.NodeUrl, cluster.NodeToken, contractAddress, userAddress)
+	} else if blockChain == 205 {
+		return tron.Eth_GetToken(cluster.NodeUrl, cluster.NodeToken, contractAddress, userAddress)
+	}
+
+	return nil, errors.New("blockChainCode is error")
+}
+
 func (h *Handler) SendReq(blockChain int64, reqBody string) (string, error) {
 	cluster := h.BalanceCluster(blockChain)
 	if cluster == nil {
@@ -100,7 +116,7 @@ func (h *Handler) GetBalance(ctx *gin.Context) {
 
 }
 
-// GetTokenBalance todo ERC20协议代币余额，后期补充
+// GetTokenBalance ERC20协议代币余额，后期补充
 func (h *Handler) GetTokenBalance(ctx *gin.Context) {
 	code := ctx.Param("chain")
 
@@ -117,29 +133,15 @@ func (h *Handler) GetTokenBalance(ctx *gin.Context) {
 
 	addr := gjson.ParseBytes(b).Get("address").String()
 	codeHash := gjson.ParseBytes(b).Get("codeHash").String()
-	tag := gjson.ParseBytes(b).Get("tag").String()
+	abi := gjson.ParseBytes(b).Get("abi").String()
 
-	req := `
- {
-     "id": 1,
-     "jsonrpc": "2.0",
-     "params": [
-          "%v",
-          "%v"
-     ],
-     "method": "eth_getBalance"
-}
-`
-	req = fmt.Sprintf(req, addr, tag, codeHash)
-
-	res, err := h.SendReq(blockChainCode, req)
+	res, err := h.SendReqForRPC(blockChainCode, codeHash, addr, abi)
 	if err != nil {
 		h.Error(ctx, ctx.Request.RequestURI, err.Error())
 		return
 	}
 
 	h.Success(ctx, res, ctx.Request.RequestURI)
-
 }
 
 // GetNonce todo 仅适用于 ether,tron 暂不支持

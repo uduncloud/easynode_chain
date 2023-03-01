@@ -2,7 +2,10 @@ package tron
 
 import (
 	"errors"
+	"fmt"
+	"github.com/fbsobreira/gotron-sdk/pkg/client"
 	"github.com/tidwall/gjson"
+	"google.golang.org/grpc"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -47,4 +50,50 @@ func Eth_WriteMsgToChain(host string, token string, query string) (string, error
 	}
 
 	return string(body), nil
+}
+
+func Eth_GetToken(host string, key string, contractAddress string, userAddress string) (map[string]interface{}, error) {
+	if len(key) > 1 {
+		host = fmt.Sprintf("%v/%v", host, key)
+	}
+
+	//todo 待设定
+	host = "grpc.trongrid.io:50051"
+
+	conn := client.NewGrpcClient(host)
+	_ = conn.SetAPIKey(key) // todo 没有发现设置意义
+	err := conn.Start(grpc.WithInsecure())
+	if err != nil {
+		return nil, err
+	}
+	mp := make(map[string]interface{}, 2)
+	balance, err := conn.TRC20ContractBalance(userAddress, contractAddress)
+
+	if err != nil {
+		log.Println("err=", err)
+	} else {
+		mp["balance"] = balance.String()
+	}
+
+	name, err := conn.TRC20GetName(contractAddress)
+	if err != nil {
+		log.Println("err=", err)
+	} else {
+		mp["name"] = name
+	}
+
+	symbol, err := conn.TRC20GetSymbol(contractAddress)
+	if err != nil {
+		log.Println("err=", err)
+	} else {
+		mp["symbol"] = symbol
+	}
+
+	decimals, err := conn.TRC20GetDecimals(contractAddress)
+	if err != nil {
+		log.Println("err=", err)
+	} else {
+		mp["decimals"] = decimals
+	}
+	return mp, nil
 }
