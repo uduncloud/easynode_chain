@@ -248,6 +248,7 @@ func (h *Handler) SendRawTx(ctx *gin.Context) {
 	h.Success(ctx, res, ctx.Request.RequestURI)
 }
 
+// HandlerReq  有用户自定义请求内容，然后直接发送到节点 ，和eth_call 函数无关
 func (h *Handler) HandlerReq(ctx *gin.Context) {
 	code := ctx.Param("chain")
 
