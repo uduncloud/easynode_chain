@@ -12,15 +12,9 @@ import (
 	"log"
 	"net/http"
 	"strings"
-	"time"
 )
 
 func Eth_WriteMsgToChain(host string, token string, query string) (string, error) {
-
-	start := time.Now()
-	defer func() {
-		log.Printf("Eth_GetBlockByHash | duration=%v", time.Now().Sub(start))
-	}()
 
 	if len(token) > 1 {
 		host = fmt.Sprintf("%v/%v", host, token)

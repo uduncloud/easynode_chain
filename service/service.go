@@ -44,7 +44,7 @@ func (h *Handler) BalanceCluster(blockChain int64) *config.NodeCluster {
 		return nil
 	}
 }
-func (h *Handler) SendReqForRPC(blockChain int64, contractAddress string, userAddress string, abi string) (map[string]interface{}, error) {
+func (h *Handler) SendTokenReqForRPC(blockChain int64, contractAddress string, userAddress string, abi string) (map[string]interface{}, error) {
 	cluster := h.BalanceCluster(blockChain)
 	if cluster == nil {
 		//不存在节点
@@ -54,10 +54,28 @@ func (h *Handler) SendReqForRPC(blockChain int64, contractAddress string, userAd
 	if blockChain == 200 {
 		return ether.Eth_GetToken(cluster.NodeUrl, cluster.NodeToken, contractAddress, userAddress)
 	} else if blockChain == 205 {
-		return tron.Eth_GetToken(cluster.NodeUrl, cluster.NodeToken, contractAddress, userAddress)
+		//url := fmt.Sprintf("%v/%v", cluster.NodeUrl, "/jsonrpc")
+		return tron.Eth_GetToken("grpc.trongrid.io:50051", cluster.NodeToken, contractAddress, userAddress)
 	}
 
 	return nil, errors.New("blockChainCode is error")
+}
+
+func (h *Handler) SendTxReq(blockChain int64, reqBody string) (string, error) {
+	cluster := h.BalanceCluster(blockChain)
+	if cluster == nil {
+		//不存在节点
+		return "", errors.New("blockchain node has not found")
+	}
+
+	if blockChain == 200 {
+		return ether.Eth_WriteMsgToChain(cluster.NodeUrl, cluster.NodeToken, reqBody)
+	} else if blockChain == 205 {
+		url := fmt.Sprintf("%v/%v", cluster.NodeUrl, "wallet/broadcasttransaction")
+		return tron.Eth_SendRawTx(url, cluster.NodeToken, reqBody)
+	}
+
+	return "", errors.New("blockChainCode is error")
 }
 
 func (h *Handler) SendReq(blockChain int64, reqBody string) (string, error) {
@@ -70,7 +88,8 @@ func (h *Handler) SendReq(blockChain int64, reqBody string) (string, error) {
 	if blockChain == 200 {
 		return ether.Eth_WriteMsgToChain(cluster.NodeUrl, cluster.NodeToken, reqBody)
 	} else if blockChain == 205 {
-		return tron.Eth_WriteMsgToChain(cluster.NodeUrl, cluster.NodeToken, reqBody)
+		url := fmt.Sprintf("%v/%v", cluster.NodeUrl, "/jsonrpc")
+		return tron.Eth_WriteMsgToChain(url, cluster.NodeToken, reqBody)
 	}
 
 	return "", errors.New("blockChainCode is error")
@@ -138,7 +157,7 @@ func (h *Handler) GetTokenBalance(ctx *gin.Context) {
 	codeHash := r.Get("codeHash").String()
 	abi := r.Get("abi").String()
 
-	res, err := h.SendReqForRPC(blockChainCode, codeHash, addr, abi)
+	res, err := h.SendTokenReqForRPC(blockChainCode, codeHash, addr, abi)
 	if err != nil {
 		h.Error(ctx, r.String(), ctx.Request.RequestURI, err.Error())
 		return

@@ -2,7 +2,6 @@ package tron
 
 import (
 	"errors"
-	"fmt"
 	"github.com/fbsobreira/gotron-sdk/pkg/client"
 	"github.com/tidwall/gjson"
 	"google.golang.org/grpc"
@@ -10,15 +9,9 @@ import (
 	"log"
 	"net/http"
 	"strings"
-	"time"
 )
 
 func Eth_WriteMsgToChain(host string, token string, query string) (string, error) {
-
-	start := time.Now()
-	defer func() {
-		log.Printf("Eth_GetBlockByHash | duration=%v", time.Now().Sub(start))
-	}()
 
 	//host = fmt.Sprintf("%v/%v", host, "jsonrpc")
 	payload := strings.NewReader(query)
@@ -52,14 +45,43 @@ func Eth_WriteMsgToChain(host string, token string, query string) (string, error
 	return string(body), nil
 }
 
-func Eth_GetToken(host string, key string, contractAddress string, userAddress string) (map[string]interface{}, error) {
-	if len(key) > 1 {
-		host = fmt.Sprintf("%v/%v", host, key)
+func Eth_SendRawTx(host string, token string, query string) (string, error) {
+	//host = fmt.Sprintf("%v/%v", host, "jsonrpc")
+	payload := strings.NewReader(query)
+
+	req, err := http.NewRequest("POST", host, payload)
+	if err != nil {
+		return "", err
 	}
 
-	//todo 待设定
-	host = "grpc.trongrid.io:50051"
+	req.Header.Add("accept", "application/json")
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("cache-control", "no-cache")
+	req.Header.Add("TRON_PRO_API_KEY", token)
 
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+
+	defer res.Body.Close()
+	body, err := ioutil.ReadAll(res.Body)
+
+	if err != nil {
+		return "", err
+	}
+
+	if gjson.ParseBytes(body).Get("error").Exists() {
+		return "", errors.New(string(body))
+	}
+
+	return string(body), nil
+}
+
+func Eth_GetToken(host string, key string, contractAddress string, userAddress string) (map[string]interface{}, error) {
+
+	//todo 待设定
+	//host = "grpc.trongrid.io:50051"
 	conn := client.NewGrpcClient(host)
 	_ = conn.SetAPIKey(key) // todo 没有发现设置意义
 	err := conn.Start(grpc.WithInsecure())
