@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"fmt"
+	"github.com/fbsobreira/gotron-sdk/pkg/address"
 	"github.com/gin-gonic/gin"
 	"github.com/sunjiangjun/xlog"
 	"github.com/tidwall/gjson"
@@ -12,6 +13,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"strconv"
+	"strings"
 )
 
 type Handler struct {
@@ -44,6 +46,7 @@ func (h *Handler) BalanceCluster(blockChain int64) *config.NodeCluster {
 		return nil
 	}
 }
+
 func (h *Handler) SendTokenReqForRPC(blockChain int64, contractAddress string, userAddress string, abi string) (map[string]interface{}, error) {
 	cluster := h.BalanceCluster(blockChain)
 	if cluster == nil {
@@ -88,7 +91,7 @@ func (h *Handler) SendReq(blockChain int64, reqBody string) (string, error) {
 	if blockChain == 200 {
 		return ether.Eth_WriteMsgToChain(cluster.NodeUrl, cluster.NodeToken, reqBody)
 	} else if blockChain == 205 {
-		url := fmt.Sprintf("%v/%v", cluster.NodeUrl, "/jsonrpc")
+		url := fmt.Sprintf("%v/%v", cluster.NodeUrl, "jsonrpc")
 		return tron.Eth_WriteMsgToChain(url, cluster.NodeToken, reqBody)
 	}
 
@@ -110,6 +113,17 @@ func (h *Handler) GetBalance(ctx *gin.Context) {
 	}
 
 	addr := gjson.ParseBytes(b).Get("address").String()
+
+	if blockChainCode == 205 && !strings.HasPrefix(addr, "0x") {
+		//tron 链 必须是hex address
+		a, err := address.Base58ToAddress(addr)
+		if err != nil {
+			h.Error(ctx, "", ctx.Request.RequestURI, err.Error())
+			return
+		}
+		addr = a.Hex()
+	}
+
 	tag := gjson.ParseBytes(b).Get("tag").String()
 	if len(tag) < 1 {
 		tag = "latest"
