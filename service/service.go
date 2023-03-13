@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"fmt"
+	"github.com/fbsobreira/gotron-sdk/pkg/address"
 	"github.com/gin-gonic/gin"
 	"github.com/sunjiangjun/xlog"
 	"github.com/tidwall/gjson"
@@ -12,6 +13,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"strconv"
+	"strings"
 )
 
 type Handler struct {
@@ -44,6 +46,41 @@ func (h *Handler) BalanceCluster(blockChain int64) *config.NodeCluster {
 		return nil
 	}
 }
+
+func (h *Handler) SendTokenReqForRPC(blockChain int64, contractAddress string, userAddress string, abi string) (map[string]interface{}, error) {
+	cluster := h.BalanceCluster(blockChain)
+	if cluster == nil {
+		//不存在节点
+		return nil, errors.New("blockchain node has not found")
+	}
+
+	if blockChain == 200 {
+		return ether.Eth_GetToken(cluster.NodeUrl, cluster.NodeToken, contractAddress, userAddress)
+	} else if blockChain == 205 {
+		//url := fmt.Sprintf("%v/%v", cluster.NodeUrl, "/jsonrpc")
+		return tron.Eth_GetToken("grpc.trongrid.io:50051", cluster.NodeToken, contractAddress, userAddress)
+	}
+
+	return nil, errors.New("blockChainCode is error")
+}
+
+func (h *Handler) SendTxReq(blockChain int64, reqBody string) (string, error) {
+	cluster := h.BalanceCluster(blockChain)
+	if cluster == nil {
+		//不存在节点
+		return "", errors.New("blockchain node has not found")
+	}
+
+	if blockChain == 200 {
+		return ether.Eth_WriteMsgToChain(cluster.NodeUrl, cluster.NodeToken, reqBody)
+	} else if blockChain == 205 {
+		url := fmt.Sprintf("%v/%v", cluster.NodeUrl, "wallet/broadcasttransaction")
+		return tron.Eth_SendRawTx(url, cluster.NodeToken, reqBody)
+	}
+
+	return "", errors.New("blockChainCode is error")
+}
+
 func (h *Handler) SendReq(blockChain int64, reqBody string) (string, error) {
 	cluster := h.BalanceCluster(blockChain)
 	if cluster == nil {
@@ -54,7 +91,8 @@ func (h *Handler) SendReq(blockChain int64, reqBody string) (string, error) {
 	if blockChain == 200 {
 		return ether.Eth_WriteMsgToChain(cluster.NodeUrl, cluster.NodeToken, reqBody)
 	} else if blockChain == 205 {
-		return tron.Eth_WriteMsgToChain(cluster.NodeUrl, cluster.NodeToken, reqBody)
+		url := fmt.Sprintf("%v/%v", cluster.NodeUrl, "jsonrpc")
+		return tron.Eth_WriteMsgToChain(url, cluster.NodeToken, reqBody)
 	}
 
 	return "", errors.New("blockChainCode is error")
@@ -65,17 +103,31 @@ func (h *Handler) GetBalance(ctx *gin.Context) {
 
 	blockChainCode, err := strconv.ParseInt(code, 0, 64)
 	if err != nil {
-		h.Error(ctx, ctx.Request.RequestURI, err.Error())
+		h.Error(ctx, "", ctx.Request.RequestURI, err.Error())
 		return
 	}
 	b, err := ioutil.ReadAll(ctx.Request.Body)
 	if err != nil {
-		h.Error(ctx, ctx.Request.RequestURI, err.Error())
+		h.Error(ctx, "", ctx.Request.RequestURI, err.Error())
 		return
 	}
 
 	addr := gjson.ParseBytes(b).Get("address").String()
+
+	if blockChainCode == 205 && !strings.HasPrefix(addr, "0x") {
+		//tron 链 必须是hex address
+		a, err := address.Base58ToAddress(addr)
+		if err != nil {
+			h.Error(ctx, "", ctx.Request.RequestURI, err.Error())
+			return
+		}
+		addr = a.Hex()
+	}
+
 	tag := gjson.ParseBytes(b).Get("tag").String()
+	if len(tag) < 1 {
+		tag = "latest"
+	}
 
 	req := `
  {
@@ -92,54 +144,40 @@ func (h *Handler) GetBalance(ctx *gin.Context) {
 
 	res, err := h.SendReq(blockChainCode, req)
 	if err != nil {
-		h.Error(ctx, ctx.Request.RequestURI, err.Error())
+		h.Error(ctx, req, ctx.Request.RequestURI, err.Error())
 		return
 	}
 
-	h.Success(ctx, res, ctx.Request.RequestURI)
+	h.Success(ctx, req, res, ctx.Request.RequestURI)
 
 }
 
-// GetTokenBalance todo ERC20协议代币余额，后期补充
+// GetTokenBalance ERC20协议代币余额，后期补充
 func (h *Handler) GetTokenBalance(ctx *gin.Context) {
 	code := ctx.Param("chain")
 
 	blockChainCode, err := strconv.ParseInt(code, 0, 64)
 	if err != nil {
-		h.Error(ctx, ctx.Request.RequestURI, err.Error())
+		h.Error(ctx, "", ctx.Request.RequestURI, err.Error())
 		return
 	}
 	b, err := ioutil.ReadAll(ctx.Request.Body)
 	if err != nil {
-		h.Error(ctx, ctx.Request.RequestURI, err.Error())
+		h.Error(ctx, "", ctx.Request.RequestURI, err.Error())
 		return
 	}
+	r := gjson.ParseBytes(b)
+	addr := r.Get("address").String()
+	codeHash := r.Get("codeHash").String()
+	abi := r.Get("abi").String()
 
-	addr := gjson.ParseBytes(b).Get("address").String()
-	codeHash := gjson.ParseBytes(b).Get("codeHash").String()
-	tag := gjson.ParseBytes(b).Get("tag").String()
-
-	req := `
- {
-     "id": 1,
-     "jsonrpc": "2.0",
-     "params": [
-          "%v",
-          "%v"
-     ],
-     "method": "eth_getBalance"
-}
-`
-	req = fmt.Sprintf(req, addr, tag, codeHash)
-
-	res, err := h.SendReq(blockChainCode, req)
+	res, err := h.SendTokenReqForRPC(blockChainCode, codeHash, addr, abi)
 	if err != nil {
-		h.Error(ctx, ctx.Request.RequestURI, err.Error())
+		h.Error(ctx, r.String(), ctx.Request.RequestURI, err.Error())
 		return
 	}
 
-	h.Success(ctx, res, ctx.Request.RequestURI)
-
+	h.Success(ctx, r.String(), res, ctx.Request.RequestURI)
 }
 
 // GetNonce todo 仅适用于 ether,tron 暂不支持
@@ -148,12 +186,12 @@ func (h *Handler) GetNonce(ctx *gin.Context) {
 
 	blockChainCode, err := strconv.ParseInt(code, 0, 64)
 	if err != nil {
-		h.Error(ctx, ctx.Request.RequestURI, err.Error())
+		h.Error(ctx, "", ctx.Request.RequestURI, err.Error())
 		return
 	}
 	b, err := ioutil.ReadAll(ctx.Request.Body)
 	if err != nil {
-		h.Error(ctx, ctx.Request.RequestURI, err.Error())
+		h.Error(ctx, "", ctx.Request.RequestURI, err.Error())
 		return
 	}
 
@@ -175,11 +213,11 @@ func (h *Handler) GetNonce(ctx *gin.Context) {
 
 	res, err := h.SendReq(blockChainCode, req)
 	if err != nil {
-		h.Error(ctx, ctx.Request.RequestURI, err.Error())
+		h.Error(ctx, req, ctx.Request.RequestURI, err.Error())
 		return
 	}
 
-	h.Success(ctx, res, ctx.Request.RequestURI)
+	h.Success(ctx, req, res, ctx.Request.RequestURI)
 
 }
 
@@ -188,7 +226,7 @@ func (h *Handler) GetLatestBlock(ctx *gin.Context) {
 
 	blockChainCode, err := strconv.ParseInt(code, 0, 64)
 	if err != nil {
-		h.Error(ctx, ctx.Request.RequestURI, err.Error())
+		h.Error(ctx, "", ctx.Request.RequestURI, err.Error())
 		return
 	}
 
@@ -201,11 +239,11 @@ func (h *Handler) GetLatestBlock(ctx *gin.Context) {
 `
 	res, err := h.SendReq(blockChainCode, req)
 	if err != nil {
-		h.Error(ctx, ctx.Request.RequestURI, err.Error())
+		h.Error(ctx, req, ctx.Request.RequestURI, err.Error())
 		return
 	}
 
-	h.Success(ctx, res, ctx.Request.RequestURI)
+	h.Success(ctx, req, res, ctx.Request.RequestURI)
 
 }
 
@@ -214,12 +252,12 @@ func (h *Handler) SendRawTx(ctx *gin.Context) {
 
 	blockChainCode, err := strconv.ParseInt(code, 0, 64)
 	if err != nil {
-		h.Error(ctx, ctx.Request.RequestURI, err.Error())
+		h.Error(ctx, "", ctx.Request.RequestURI, err.Error())
 		return
 	}
 	b, err := ioutil.ReadAll(ctx.Request.Body)
 	if err != nil {
-		h.Error(ctx, ctx.Request.RequestURI, err.Error())
+		h.Error(ctx, "", ctx.Request.RequestURI, err.Error())
 		return
 	}
 
@@ -239,34 +277,35 @@ func (h *Handler) SendRawTx(ctx *gin.Context) {
 
 	res, err := h.SendReq(blockChainCode, req)
 	if err != nil {
-		h.Error(ctx, ctx.Request.RequestURI, err.Error())
+		h.Error(ctx, req, ctx.Request.RequestURI, err.Error())
 		return
 	}
 
-	h.Success(ctx, res, ctx.Request.RequestURI)
+	h.Success(ctx, req, res, ctx.Request.RequestURI)
 }
 
+// HandlerReq  有用户自定义请求内容，然后直接发送到节点 ，和eth_call 函数无关
 func (h *Handler) HandlerReq(ctx *gin.Context) {
 	code := ctx.Param("chain")
 
 	blockChainCode, err := strconv.ParseInt(code, 0, 64)
 	if err != nil {
-		h.Error(ctx, ctx.Request.RequestURI, err.Error())
+		h.Error(ctx, "", ctx.Request.RequestURI, err.Error())
 		return
 	}
 	b, err := ioutil.ReadAll(ctx.Request.Body)
 	if err != nil {
-		h.Error(ctx, ctx.Request.RequestURI, err.Error())
+		h.Error(ctx, "", ctx.Request.RequestURI, err.Error())
 		return
 	}
 
 	res, err := h.SendReq(blockChainCode, string(b))
 	if err != nil {
-		h.Error(ctx, ctx.Request.RequestURI, err.Error())
+		h.Error(ctx, string(b), ctx.Request.RequestURI, err.Error())
 		return
 	}
 
-	h.Success(ctx, res, ctx.Request.RequestURI)
+	h.Success(ctx, string(b), res, ctx.Request.RequestURI)
 }
 
 const (
@@ -274,16 +313,16 @@ const (
 	FAIL    = 1
 )
 
-func (h *Handler) Success(c *gin.Context, resp interface{}, path string) {
-	h.log.Printf("path=%v,body=%v\n", path, resp)
+func (h *Handler) Success(c *gin.Context, req string, resp interface{}, path string) {
+	h.log.Printf("path=%v,req=%v,resp=%v\n", path, req, resp)
 	mp := make(map[string]interface{})
 	mp["code"] = SUCCESS
 	mp["data"] = resp
 	c.JSON(200, mp)
 }
 
-func (h *Handler) Error(c *gin.Context, path string, err string) {
-	h.log.Printf("path=%v,err=%v\n", path, err)
+func (h *Handler) Error(c *gin.Context, req string, path string, err string) {
+	h.log.Errorf("path=%v,req=%v,err=%v\n", path, req, err)
 	mp := make(map[string]interface{})
 	mp["code"] = FAIL
 	mp["data"] = err
